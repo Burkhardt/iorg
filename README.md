@@ -17,7 +17,7 @@ And the self contained binary for macOS I find there is named `iorg` (~70MB in s
 
 <small>`ls -la ~/ProjectsCore/imgorg/iorg/bin/Release/netcoreapp3.0/osx.10.14-x64/publish/`</small>
 
-| 1  | 1 | 1 | 1 | 1 | 1 | 1 | 
+|  |  |  |  |  |  |  | 
  | --- | --- | --- | --- | ---: | --- | --- |
 drwxr-xr-x | 4   | RSB | staff |      128 | Sep 29 14:47 | . |
 drwxr-xr-x | 254 | RSB | staff |     8128 | Sep 29 14:46 | .. |

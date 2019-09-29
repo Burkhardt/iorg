@@ -13,7 +13,7 @@ The cli call prints out where to find the resulting binary - in my case:
 
 <samp><small>`iorg -> ~/ProjectsCore/imgorg/iorg/bin/Release/netcoreapp3.0/osx.10.14-x64/publish/`</small></samp>
 
-    $ exa -lh ~/ProjectsCore/imgorg/iorg/bin/Release/netcoreapp3.0/osx.10.14-x64/publish/
+    exa -lh ~/ProjectsCore/imgorg/iorg/bin/Release/netcoreapp3.0/osx.10.14-x64/publish/
 
 Permissions | Size | User | Date | Name
 --- | --- | --- | --- | --- | 

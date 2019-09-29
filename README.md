@@ -9,7 +9,7 @@ _OR_
 
     dotnet publish -r osx.10.14-x64 -c release 
 
-The cli call prints out wher to find the resulting binary - in my case: 
+The cli call prints out where to find the resulting binary - in my case: 
 
 <samp><small>`iorg -> ~/ProjectsCore/imgorg/iorg/bin/Release/netcoreapp3.0/osx.10.14-x64/publish/`</small></samp>
 

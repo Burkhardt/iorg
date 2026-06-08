@@ -25,8 +25,11 @@
 		<PackageReference Include="xunit.v3" Version="3.2.2" />
 	</ItemGroup>
 
-	<ItemGroup Condition="'$(UseLocalRAIkeepSources)' == 'true'">
+	<ItemGroup>
 		<ProjectReference Include="../iorg.csproj" />
+	</ItemGroup>
+
+	<ItemGroup Condition="'$(UseLocalRAIkeepSources)' == 'true'">
 		<ProjectReference Include="$(OsLibProjectPath)" />
 		<ProjectReference Include="$(RaiImageProjectPath)" />
 	</ItemGroup>

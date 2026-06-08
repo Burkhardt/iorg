@@ -2,12 +2,12 @@
 
 `ImgSeeder` is the RAIkeep image organizer package. It installs the `iorg` CLI, which copies source images, normalizes filenames with RaiImage naming rules, and places the final files into an `ImageTreeFile` directory layout such as `ItemIdTree8x2`.
 
-## 3.9.1
+## 3.10.0
 
-- Coordinated patch release: aligns `ImgSeeder` with the `3.9.1` `RAIkeep` package line.
+- Coordinated minor release: aligns `ImgSeeder` with the `3.10.0` `RAIkeep` package line.
 - Tracks RaiImage's current filename normalization so separated and compact trailing digits become stable image numbers during CLI ingestion.
 - Ships as part of the parent sequential NuGet release chain immediately before `PitSeeder`.
-- Current release notes: [RELEASE_NOTES_3.9.1.md](RELEASE_NOTES_3.9.1.md)
+- Current release notes: [RELEASE_NOTES_3.10.0.md](RELEASE_NOTES_3.10.0.md)
 
 This tool is part of the RAIkeep package family:
 
@@ -15,8 +15,8 @@ This tool is part of the RAIkeep package family:
 - `RaiUtils`
 - `RaiImage`
 - `JsonPit`
-- `PitSeeder`
 - `ImgSeeder` (`iorg` command)
+- `PitSeeder`
 
 ## Install
 

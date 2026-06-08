@@ -1,23 +1,73 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <Title>ImgSeeder</Title>
+    <Description>RAIkeep image organizer CLI for reorganizing flat image directories into RaiImage tree layouts.</Description>
+    <Version>3.9.1</Version>
+    <PackageId>ImgSeeder</PackageId>
+    <Authors>Rainer Burkhardt</Authors>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageProjectUrl>https://github.com/Burkhardt/iorg</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Burkhardt/iorg.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <PackageReleaseNotes>3.9.1: aligns ImgSeeder with the coordinated patch line, keeps fallback package versions current, and publishes the iorg CLI through the sequential release chain.</PackageReleaseNotes>
     <OutputType>Exe</OutputType>
-    <TargetFramework>netcoreapp3.0</TargetFramework>
-    <PublishTrimmed>true</PublishTrimmed>
-    <PublishReadyToRun>true</PublishReadyToRun>
-    <PublishSingleFile>true</PublishSingleFile>
-    <RuntimeIdentifier>osx.10.14-x64</RuntimeIdentifier>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>true</IsPackable>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>iorg</ToolCommandName>
+    <PackageOutputPath>artifacts/nuget</PackageOutputPath>
+    <PackageTags>raiimage;images;cli;tool</PackageTags>
+    <RAIkeepRoot Condition="'$(RAIkeepRoot)' == '' and Exists('../JsonPit/JsonPit.csproj')">..</RAIkeepRoot>
+    <RAIkeepRoot Condition="'$(RAIkeepRoot)' == '' and Exists('../../GitHub/RAIkeep/JsonPit/JsonPit.csproj')">../../GitHub/RAIkeep</RAIkeepRoot>
+    <JsonPitProjectPath Condition="'$(RAIkeepRoot)' != '' and Exists('$(RAIkeepRoot)/JsonPit/JsonPit.csproj')">$(RAIkeepRoot)/JsonPit/JsonPit.csproj</JsonPitProjectPath>
+    <OsLibProjectPath Condition="'$(RAIkeepRoot)' != '' and Exists('$(RAIkeepRoot)/OsLib/OsLib.csproj')">$(RAIkeepRoot)/OsLib/OsLib.csproj</OsLibProjectPath>
+    <RaiUtilsProjectPath Condition="'$(RAIkeepRoot)' != '' and Exists('$(RAIkeepRoot)/RaiUtils/RaiUtils.csproj')">$(RAIkeepRoot)/RaiUtils/RaiUtils.csproj</RaiUtilsProjectPath>
+    <RaiImageProjectPath Condition="'$(RAIkeepRoot)' != '' and Exists('$(RAIkeepRoot)/RaiImage/RaiImage.csproj')">$(RAIkeepRoot)/RaiImage/RaiImage.csproj</RaiImageProjectPath>
+    <UseLocalRAIkeepSources Condition="'$(UseLocalRAIkeepSources)' == '' and '$(ContinuousIntegrationBuild)' == 'true'">false</UseLocalRAIkeepSources>
+    <UseLocalRAIkeepSources Condition="'$(UseLocalRAIkeepSources)' == '' and '$(JsonPitProjectPath)' != '' and '$(OsLibProjectPath)' != '' and '$(RaiUtilsProjectPath)' != '' and '$(RaiImageProjectPath)' != ''">true</UseLocalRAIkeepSources>
+    <UseLocalRAIkeepSources Condition="'$(UseLocalRAIkeepSources)' == ''">false</UseLocalRAIkeepSources>
+    <JsonPitPackageVersion Condition="'$(JsonPitPackageVersion)' == ''">3.9.1</JsonPitPackageVersion>
+    <OsLibPackageVersion Condition="'$(OsLibPackageVersion)' == ''">3.9.1</OsLibPackageVersion>
+    <RaiUtilsPackageVersion Condition="'$(RaiUtilsPackageVersion)' == ''">3.9.1</RaiUtilsPackageVersion>
+    <RaiImagePackageVersion Condition="'$(RaiImagePackageVersion)' == ''">3.9.1</RaiImagePackageVersion>
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\JsonPit\JsonPit.csproj" />
-    <ProjectReference Include="..\OsLibCore\OsLibCore.csproj" />
-    <ProjectReference Include="..\ImgOrg.Test\ImgOrg.Test.csproj" />
-    <ProjectReference Include="..\RaiUtils\RaiUtilsCore.csproj" />
-    <ProjectReference Include="..\Image.Base\Image.Base.csproj" />
+    <Compile Remove="iorg.Tests/**/*.cs" />
+    <EmbeddedResource Remove="iorg.Tests/**" />
+    <None Remove="iorg.Tests/**" />
+    <None Include="README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="System.Net.Primitives" Version="4.3.1" />
+  <Target Name="ValidateLocalRAIkeepSources"
+          BeforeTargets="Restore"
+          Condition="'$(UseLocalRAIkeepSources)' == 'true'">
+    <Error Condition="'$(JsonPitProjectPath)' == ''"
+           Text="UseLocalRAIkeepSources=true requires a JsonPit project checkout. Set /p:RAIkeepRoot=/path/to/RAIkeep." />
+    <Error Condition="'$(OsLibProjectPath)' == ''"
+           Text="UseLocalRAIkeepSources=true requires an OsLib project checkout. Set /p:RAIkeepRoot=/path/to/RAIkeep." />
+    <Error Condition="'$(RaiUtilsProjectPath)' == ''"
+           Text="UseLocalRAIkeepSources=true requires a RaiUtils project checkout. Set /p:RAIkeepRoot=/path/to/RAIkeep." />
+    <Error Condition="'$(RaiImageProjectPath)' == ''"
+           Text="UseLocalRAIkeepSources=true requires a RaiImage project checkout. Set /p:RAIkeepRoot=/path/to/RAIkeep." />
+  </Target>
+
+  <ItemGroup Condition="'$(UseLocalRAIkeepSources)' == 'true'">
+    <ProjectReference Include="$(JsonPitProjectPath)" />
+    <ProjectReference Include="$(OsLibProjectPath)" />
+    <ProjectReference Include="$(RaiUtilsProjectPath)" />
+    <ProjectReference Include="$(RaiImageProjectPath)" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(UseLocalRAIkeepSources)' != 'true'">
+    <PackageReference Include="JsonPit" Version="$(JsonPitPackageVersion)" />
+    <PackageReference Include="OsLibCore" Version="$(OsLibPackageVersion)" />
+    <PackageReference Include="RaiUtils" Version="$(RaiUtilsPackageVersion)" />
+    <PackageReference Include="RaiImage" Version="$(RaiImagePackageVersion)" />
   </ItemGroup>
 </Project>

@@ -34,15 +34,19 @@ public class SourceImageStructuredTreeTests
 		var testRoot = NewTestRoot();
 		try
 		{
+			var testSourceRoot = testRoot / "source";
+			var testSourceFile = new RaiFile(testSourceRoot, sourceFile.NameWithExtension);
+			testSourceFile.mkdir();
+			testSourceFile.cp(sourceFile);
+
 			var subscriberRoot = testRoot / "dest" / Subscriber;
 			var tempRoot = testRoot / "temp";
 			using var output = new StringWriter();
 
 			var count = ImageOrganizer.Organize(
-				sourceRoot,
+				testSourceRoot,
 				subscriberRoot,
 				Subscriber,
-				sourceFileName,
 				PathConventionType.ItemIdTree8x2,
 				ImageNamingConvention.Structured,
 				tempRoot,
@@ -61,11 +65,60 @@ public class SourceImageStructuredTreeTests
 
 			Assert.Equal(1, count);
 			Assert.True(sourceFile.Exists(), $"Original source should remain untouched: {sourceFile.FullName}");
+			Assert.True(testSourceFile.Exists(), $"Copied source should remain untouched: {testSourceFile.FullName}");
 			Assert.True(expected.Exists(), $"Expected destination file: {expected.FullName}");
 			Assert.Equal(expectedTopdir, Assert.Single(expected.Topdir.Segments));
 			Assert.Equal(expectedSubdir, Assert.Single(expected.Subdir.Segments));
-			Assert.Contains($"copied {sourceFile.FullName}", output.ToString());
-			Assert.Contains($"=> {expected.FullName}", output.ToString());
+			Assert.Equal(1, ImageOrganizer.CountSourceImages(testSourceRoot));
+			Assert.Equal($"{testSourceFile.NameWithExtension}{Environment.NewLine}", output.ToString());
+		}
+		finally
+		{
+			Cleanup(testRoot);
+		}
+	}
+
+	[Fact]
+	public void Organize_DebugOutputWritesDestinationAndSourceFullPaths()
+	{
+		var sourceRoot = GoogleDriveSourceRoot();
+		var sourceFile = new RaiFile(sourceRoot, "nomsa-concert-11.jpg");
+		Assert.True(sourceFile.Exists(), $"Missing test image: {sourceFile.FullName}");
+
+		var testRoot = NewTestRoot();
+		try
+		{
+			var testSourceRoot = testRoot / "source";
+			var testSourceFile = new RaiFile(testSourceRoot, sourceFile.NameWithExtension);
+			testSourceFile.mkdir();
+			testSourceFile.cp(sourceFile);
+
+			var subscriberRoot = testRoot / "dest" / Subscriber;
+			var tempRoot = testRoot / "temp";
+			using var output = new StringWriter();
+
+			ImageOrganizer.Organize(
+				testSourceRoot,
+				subscriberRoot,
+				Subscriber,
+				PathConventionType.ItemIdTree8x2,
+				ImageNamingConvention.Structured,
+				tempRoot,
+				output,
+				debug: true);
+
+			var expected = new ImageTreeFile(
+				subscriberRoot,
+				"NomsaConcert",
+				string.Empty,
+				sourceFile.Ext,
+				PathConventionType.ItemIdTree8x2,
+				ImageNamingConvention.Structured)
+			{
+				ImageNumber = 11
+			};
+
+			Assert.Equal($"{expected.FullName} {Icons.ArrowLeft} {testSourceFile.FullName}{Environment.NewLine}", output.ToString());
 		}
 		finally
 		{

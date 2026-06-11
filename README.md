@@ -49,28 +49,45 @@ sudo dotnet tool update ImgSeeder --tool-path /usr/local/bin
 Typical cloud-rooted usage:
 
 ```bash
-iorg -n -c OneDrive -r LiveAfricaStageImage/ nomsa -s /Users/Shared/ServerData/GDriveData/TestAfricaStage/Images/NOMSA.net/
+iorg -c OneDrive -r LiveAfricaStageImage nomsa -s /Users/Shared/ServerData/GDriveData/TestAfricaStage/Images/NOMSA.net/
 ```
 
-The command resolves `-c` through `Os.Config.Cloud`, appends `-r` and the subscriber name, then prints each source and destination pair:
+The command resolves `-c` through `Os.Config.Cloud`, appends `-r` and the subscriber name, then copies each supported source image into the destination image tree.
+
+To inspect the resolved values without copying files, add `-h`:
+
+```bash
+iorg -h -c OneDrive -r LiveAfricaStageImage nomsa -s /Users/Shared/ServerData/GDriveData/TestAfricaStage/Images/NOMSA.net/
+```
+
+The help screen shows the resolved source, destination `ImageRoot`, subscriber, supported image extensions, detected source image count, and option selections. With `-d`, it also prints debug diagnostics such as `CanRun`, `RunBlocker`, source/target existence checks, and resolved full paths. Remove `-h` to execute the copies.
+
+Without `-d`, each copied image is printed as a compact file name:
 
 ```text
-copied /source/nomsa-concert-11.jpg
-=> /dest/nomsa/NomsaCon/NomsaConce/NomsaConcert_11.jpg
+nomsa-concert-11.jpg
+SD-State-Sony-149.jpg
 ```
+
+With `-d`, each copied image is printed with full destination and source paths:
+
+```text
+/dest/nomsa/NomsaCon/NomsaConce/NomsaConcert_11.jpg  /source/nomsa-concert-11.jpg
+```
+
+The final summary reports how many detected source images were copied and groups any files that were not copied by failure reason.
 
 Useful options:
 
 - `-h`, `--help`: print help
 - `-v`, `--version`: print version
-- `-n`, `--nologo`: hide banner
-- `-b`, `--debug`: enable debug output
+- `-l`, `--nologo`: hide banner
+- `-d`, `--debug`: enable debug output
 - `-c`, `--cloud`: cloud provider name from `Os.Config.Cloud`
 - `-r`, `--root`: destination image root under the cloud root
 - `-s`, `--source`: source image directory
-- `-f`, `--filter`: file filter, default `*.jpg`
-- `-p`, `--pathconvention`: `CanonicalByName`, `ItemIdTree3x3`, or `ItemIdTree8x2`
-- `-m`, `--namingconvention`: `Legacy`, `ItemTemplate`, or `Structured`
+- `-p`, `--pathconv`: `CanonicalByName`, `ItemIdTree3x3`, or `ItemIdTree8x2`
+- `-n`, `--nameconv`: `Legacy`, `ItemTemplate`, or `Structured`
 
 ## Standalone Binaries
 

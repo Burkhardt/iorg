@@ -18,6 +18,11 @@ public static class Icons
 	public const char Folder = '\uea83';
 	public const char Banner = '\ueb1e';
 	public const char NoBanner = '\ueb24';
+	public const char Bug = '\uf188';
+	public const char Runner = '\uf04b';
+	public const char ArrowLeft = '\uf060';
+	public static readonly string[] NumberCircles = ["①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧", "⑨"];
+	public static readonly string[] FilledNumberCircles = ["❶", "❷", "❸", "❹", "❺", "❻", "❼", "❽", "❾"];
 }
 
 public static class Messages
@@ -26,59 +31,167 @@ public static class Messages
 	public static bool Banner { get; set; } = true;
 	public static string? CloudProvider { get; set; }
 	public static RaiPath? DestinationRoot { get; set; }
+	public static RaiPath? ImageRoot { get; set; }
+	public static string? RootParam { get; set; }
+	public static int? SourceImageCount { get; set; }
 	public static RaiPath? SourceRoot { get; set; }
 	public static string? Subscriber { get; set; }
-	public static string Filter { get; set; } = "*.jpg";
 	public static PathConventionType PathConvention { get; set; } = PathConventionType.ItemIdTree8x2;
 	public static ImageNamingConvention NamingConvention { get; set; } = ImageNamingConvention.Structured;
 
-	public static string[] Help =>
-	[
-		$"-h, --help\t{Icons.Help}\tprint out all options",
-		$"-v, --version\t{Icons.Info}\tprint version info",
-		$"-n, --nologo\t{(Banner ? Icons.Banner : Icons.NoBanner)}\tdo not display the banner",
-		$"-b, --debug\t{Icons.Info}\tenable debug output",
-		$"-c, --cloud\t{Icons.Folder}\t{CloudDescription()}",
-		$"-r, --root\t{Icons.Folder}\t{DestinationDescription()}",
-		$"-s, --source\t{Icons.File}\t{SourceDescription()}",
-		$"-f, --filter\t{Icons.File}\tfile filter, currently {Filter}",
-		$"-p, --pathconvention\t{Icons.Info}\t{PathConvention}; options: {string.Join(", ", Enum.GetNames<PathConventionType>())}",
-		$"-m, --namingconvention\t{Icons.Info}\t{NamingConvention}; options: {string.Join(", ", Enum.GetNames<ImageNamingConvention>())}",
-		$"{Icons.Info} Subscriber\t{Icons.File}\t{SubscriberDescription()}",
-	];
+	public static string[] Help
+	{
+		get
+		{
+			var lines = new List<string>
+			{
+				$"-h, --help\t{Icons.Help}\tprint out all options",
+				$"-v, --version\t{Icons.Info}\tprint version info",
+				$"-l, --nologo\t{BannerIcon()}\tdo not display the banner",
+				$"-d, --debug\t{DebugIcon()}\t{(Debug ? "TRUE" : "FALSE")}",
+				$"-c, --cloud\t{CloudIcon()}\t{CloudDescription()}",
+				$"-s, --source\t{Icons.Folder}\t{SourceDescription()}",
+				$"-p, --pathconv\t{SelectedOptionIcon(PathConvention)}\t{NumberedOptions<PathConventionType>()}",
+				$"-n, --nameconv\t{SelectedOptionIcon(NamingConvention)}\t{NumberedOptions<ImageNamingConvention>()}",
+			};
+
+			if (SourceRoot != null)
+				lines.Add($"{Icons.Info} SourceImages\t{Icons.Folder}\t{SourceImageDescription()}");
+
+			if (!string.IsNullOrWhiteSpace(Subscriber))
+				lines.Add($"{Icons.Info} Subscriber\t{Icons.Folder}\t{Subscriber}");
+
+			lines.Add($"-r, --root\t{Icons.Folder}\t{RootDescription()}");
+			lines.Add($"ImageRoot: {ImageRootDescription()}");
+			return lines.ToArray();
+		}
+	}
 
 	private static string CloudDescription()
 	{
-		if (!string.IsNullOrWhiteSpace(CloudProvider))
-		{
-			var cloudDir = Os.Config?.Cloud?[CloudProvider];
-			return $"{CloudProvider}: {cloudDir ?? "(not configured)"}";
-		}
-		return "cloud provider name (looks up root in Os.Config)";
+		var options = CloudProviderOptions();
+		return options.Length > 0
+			? NumberedOptions(options)
+			: "cloud provider name; []";
 	}
 
-	private static string DestinationDescription()
+	private static char BannerIcon() => Banner ? Icons.Banner : Icons.NoBanner;
+	private static char DebugIcon() => Debug ? Icons.Bug : Icons.Runner;
+	private static string CloudIcon()
+	{
+		var options = CloudProviderOptions();
+		var index = Array.FindIndex(options, option => string.Equals(option, CloudProvider, StringComparison.OrdinalIgnoreCase));
+		return index >= 0 ? SelectedNumberIcon(index + 1) : Icons.Folder.ToString();
+	}
+
+	private static string NumberIcon(int number) => number switch
+	{
+		> 0 when number <= Icons.NumberCircles.Length => Icons.NumberCircles[number - 1],
+		_ => $"({number})"
+	};
+
+	private static string SelectedNumberIcon(int number) => number switch
+	{
+		> 0 when number <= Icons.FilledNumberCircles.Length => Icons.FilledNumberCircles[number - 1],
+		_ => $"({number})"
+	};
+
+	private static string SelectedOptionIcon<TEnum>(TEnum value)
+		where TEnum : struct, Enum
+	{
+		var values = Enum.GetValues<TEnum>();
+		var index = Array.IndexOf(values, value);
+		return SelectedNumberIcon(index + 1);
+	}
+
+	private static string NumberedOptions<TEnum>()
+		where TEnum : struct, Enum
+	{
+		return NumberedOptions(Enum.GetNames<TEnum>());
+	}
+
+	private static string NumberedOptions(IReadOnlyList<string> names)
+	{
+		return string.Join(", ", names.Select((name, index) => $"{NumberIcon(index + 1)} {name}"));
+	}
+
+	private static string[] CloudProviderOptions()
+	{
+		var ordered = CloudProviderOrderOptions();
+		if (ordered.Length > 0)
+			return ordered;
+
+		try
+		{
+			dynamic? cloud = Os.Config?.Cloud;
+			if (cloud == null)
+				return [];
+
+			IEnumerable<dynamic> properties = cloud.Properties();
+			return properties.Select(property => (string)property.Name).ToArray();
+		}
+		catch
+		{
+			return [];
+		}
+	}
+
+	private static string[] CloudProviderOrderOptions()
+	{
+		try
+		{
+			dynamic? defaultCloudOrder = Os.Config?.DefaultCloudOrder;
+			if (defaultCloudOrder == null)
+				return [];
+
+			var options = new List<string>();
+			foreach (var item in defaultCloudOrder)
+			{
+				string? name = item?.ToString();
+				if (!string.IsNullOrWhiteSpace(name))
+					options.Add(name);
+			}
+
+			return options.Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+		}
+		catch
+		{
+			return [];
+		}
+	}
+
+	private static string RootDescription()
+	{
+		return !string.IsNullOrWhiteSpace(RootParam)
+			? RootParam
+			: "destination image root, resolved under --cloud when provided";
+	}
+
+	private static string ImageRootDescription()
 	{
 		return DestinationRoot != null
 			? DestinationRoot.FullPath
-			: "destination image root, resolved under --cloud when provided";
+			: ImageRoot != null
+				? ImageRoot.FullPath
+			: "complete destination image root";
 	}
 
 	private static string SourceDescription()
 	{
 		return SourceRoot != null
 			? SourceRoot.FullPath
-			: "source image directory";
+			: "no source image directory given";
 	}
 
-	private static string SubscriberDescription()
+	private static string SourceImageDescription()
 	{
-		return !string.IsNullOrWhiteSpace(Subscriber)
-			? Subscriber
-			: "subscriber directory name (e.g., nomsa)";
+		return SourceImageCount.HasValue
+			? $"{SourceImageCount.Value} images detected; supported: {ImageTypes.Default.String}"
+			: $"image count unavailable; supported: {ImageTypes.Default.String}";
 	}
 
 	public static void WriteError(string text) => WriteHighlighted(text, ConsoleColor.DarkRed, ConsoleColor.White);
+	public static void WriteInfo(string text) => WriteHighlighted(text, ConsoleColor.Blue);
 	public static void WriteSuccess(string text) => WriteHighlighted(text, ConsoleColor.DarkGreen);
 	public static void WriteDebug(string text) { if (Debug) WriteHighlighted(text, ConsoleColor.DarkYellow); }
 
@@ -114,49 +227,131 @@ public static class Messages
 
 public static class ImageOrganizer
 {
+	public sealed record ImageCopySuccess(string SourceName, string SourceFullName, string DestinationFullName);
+	public sealed record ImageCopyFailure(string SourceName, string SourceFullName, string Problem, string ErrorType);
+
+	public sealed class ImageOrganizeReport
+	{
+		public ImageOrganizeReport(int sourceImageCount)
+		{
+			SourceImageCount = sourceImageCount;
+		}
+
+		public int SourceImageCount { get; }
+		public List<ImageCopySuccess> Copied { get; } = [];
+		public List<ImageCopyFailure> Failed { get; } = [];
+		public int CopiedCount => Copied.Count;
+		public int FailedCount => Failed.Count;
+	}
+
 	public static int Organize(
 		RaiPath sourceRoot,
 		RaiPath subscriberRoot,
 		string subscriber,
-		string filter = "*.jpg",
 		PathConventionType pathConvention = PathConventionType.ItemIdTree8x2,
 		ImageNamingConvention namingConvention = ImageNamingConvention.Structured,
 		RaiPath? tempRoot = null,
-		TextWriter? output = null)
+		TextWriter? output = null,
+		bool debug = false)
+	{
+		return OrganizeWithReport(
+			sourceRoot,
+			subscriberRoot,
+			subscriber,
+			pathConvention,
+			namingConvention,
+			tempRoot,
+			output,
+			debug).CopiedCount;
+	}
+
+	public static ImageOrganizeReport OrganizeWithReport(
+		RaiPath sourceRoot,
+		RaiPath subscriberRoot,
+		string subscriber,
+		PathConventionType pathConvention = PathConventionType.ItemIdTree8x2,
+		ImageNamingConvention namingConvention = ImageNamingConvention.Structured,
+		RaiPath? tempRoot = null,
+		TextWriter? output = null,
+		bool debug = false)
 	{
 		if (string.IsNullOrWhiteSpace(subscriber))
 			throw new ArgumentException("Subscriber is required.", nameof(subscriber));
 
 		output ??= Console.Out;
+		var sources = EnumerateImageFiles(sourceRoot).ToList();
+		var report = new ImageOrganizeReport(sources.Count);
 		var stagingRoot = (tempRoot ?? Os.TempDir) / new RaiRelPath(subscriber);
-		var count = 0;
 
-		foreach (var source in sourceRoot.EnumerateFiles(filter))
+		foreach (var source in sources)
 		{
-			var normalizedFullName = ImageFile.EasyFileName(source.FullName);
-			var normalized = new ImageFile(normalizedFullName, namingConvention);
-			var staged = new RaiFile(stagingRoot, normalized.NameWithExtension);
-			staged.mkdir();
-			staged.cp(source);
-
-			var destination = new ImageTreeFile(
-				subscriberRoot,
-				normalized.ItemId,
-				string.Empty,
-				normalized.Ext,
-				pathConvention,
-				namingConvention)
+			try
 			{
-				ImageNumber = normalized.ImageNumber
-			};
+				var normalizedFullName = ImageFile.EasyFileName(source.FullName);
+				var normalized = new ImageFile(normalizedFullName, namingConvention);
+				var staged = new RaiFile(stagingRoot, normalized.NameWithExtension);
+				staged.mkdir();
+				staged.cp(source);
 
-			destination.mv(staged);
-			output.WriteLine($"copied {source.FullName}");
-			output.WriteLine($"=> {destination.FullName}");
-			count++;
+				var destination = new ImageTreeFile(
+					subscriberRoot,
+					normalized.ItemId,
+					string.Empty,
+					normalized.Ext,
+					pathConvention,
+					namingConvention)
+				{
+					ImageNumber = normalized.ImageNumber
+				};
+
+				destination.mv(staged);
+				report.Copied.Add(new ImageCopySuccess(source.NameWithExtension, source.FullName, destination.FullName));
+				output.WriteLine(debug
+					? $"{destination.FullName} {Icons.ArrowLeft} {source.FullName}"
+					: source.NameWithExtension);
+			}
+			catch (Exception ex) when (IsPerFileFailure(ex))
+			{
+				report.Failed.Add(new ImageCopyFailure(source.NameWithExtension, source.FullName, ProblemDescription(ex), ex.GetType().Name));
+				output.WriteLine(debug
+					? $"not copied: {source.FullName}; {ex.GetType().Name}: {ex.Message}"
+					: $"not copied: {source.NameWithExtension}");
+			}
 		}
 
-		return count;
+		return report;
+	}
+
+	public static int CountSourceImages(RaiPath sourceRoot)
+	{
+		return EnumerateImageFiles(sourceRoot).Count();
+	}
+
+	private static IEnumerable<RaiFile> EnumerateImageFiles(RaiPath sourceRoot)
+	{
+		var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+		foreach (var extension in ImageTypes.Default.Array)
+		{
+			var ext = (extension ?? string.Empty).Trim().TrimStart('.');
+			if (string.IsNullOrWhiteSpace(ext) || !seen.Add(ext))
+				continue;
+
+			foreach (var source in sourceRoot.EnumerateFiles($"*.{ext}"))
+				yield return source;
+		}
+	}
+
+	private static bool IsPerFileFailure(Exception ex)
+	{
+		return ex is IOException
+			or UnauthorizedAccessException
+			or NotSupportedException
+			or ArgumentException;
+	}
+
+	private static string ProblemDescription(Exception ex)
+	{
+		return ex.Message;
 	}
 }
 
@@ -172,55 +367,81 @@ internal static class Program
 				return 0;
 			}
 
-			Messages.Debug = HasOption(args, "-b", "--debug");
-			Messages.Banner = !HasOption(args, "-n", "--nologo");
+			Messages.Debug = HasOption(args, "-d", "--debug");
+			Messages.Banner = !HasOption(args, "-l", "--nologo");
 			var showHelp = HasOption(args, "-h", "--help");
 			Messages.CloudProvider = ParamValue(args, "-c", "--cloudprovider", "--cloud");
 			var rootParam = ParamValue(args, "-r", "--root", "--imageroot");
 			var sourceParam = ParamValue(args, "-s", "--source");
-			Messages.Filter = ParamValue(args, "-f", "--filter") ?? Messages.Filter;
+			Messages.RootParam = rootParam;
 			Messages.Subscriber = PositionalArg(args);
 
-			if (!TryParseEnum(ParamValue(args, "-p", "--pathconvention", "--path-convention"), out PathConventionType pathConvention))
+			if (!TryParseEnum(ParamValue(args, "-p", "--pathconv", "--path-conv"), out PathConventionType pathConvention))
 				return 1;
-			if (!TryParseEnum(ParamValue(args, "-m", "--namingconvention", "--naming-convention"), out ImageNamingConvention namingConvention))
+			if (!TryParseEnum(ParamValue(args, "-n", "--nameconv", "--name-conv"), out ImageNamingConvention namingConvention))
 				return 1;
 			Messages.PathConvention = pathConvention;
 			Messages.NamingConvention = namingConvention;
 
 			Messages.SourceRoot = !string.IsNullOrWhiteSpace(sourceParam) ? new RaiPath(sourceParam) : null;
-			var destinationRoot = ResolveDestinationRoot(Messages.CloudProvider, rootParam, Messages.Subscriber);
+			Messages.SourceImageCount = Messages.SourceRoot != null && Messages.SourceRoot.Exists()
+				? ImageOrganizer.CountSourceImages(Messages.SourceRoot)
+				: null;
+			var imageRoot = ResolveImageRoot(Messages.CloudProvider, rootParam);
+			Messages.ImageRoot = imageRoot;
+			var destinationRoot = ResolveDestinationRoot(imageRoot, Messages.Subscriber);
 			Messages.DestinationRoot = destinationRoot;
+
+			var runBlockerReason = RunBlockerReason(
+				Messages.SourceRoot,
+				Messages.SourceImageCount,
+				destinationRoot,
+				Messages.Subscriber,
+				Messages.Debug);
+			var canRun = runBlockerReason == null;
 
 			if (Messages.Banner)
 				Messages.WriteBanner($"{Icons.Info} Image Organizer CLI");
 
-			var canRun = Messages.SourceRoot != null
-				&& destinationRoot != null
-				&& !string.IsNullOrWhiteSpace(Messages.Subscriber);
-
-			if (showHelp || !canRun)
+			if (Messages.Debug)
 			{
-				Messages.WriteHelp();
-				return showHelp ? 0 : 1;
+				Messages.WriteDebug($"ImageRoot: {destinationRoot?.FullPath}");
+				Messages.WriteDebug($"ImageRootExists: {destinationRoot?.Exists()}");
+				Messages.WriteDebug($"Target: {destinationRoot?.FullPath}");
+				Messages.WriteDebug($"TargetExists: {destinationRoot?.Exists()}");
+				Messages.WriteDebug($"Subscriber: {Messages.Subscriber}");
+				Messages.WriteDebug($"Source: {Messages.SourceRoot?.FullPath}");
+				Messages.WriteDebug($"SourceExists: {Messages.SourceRoot?.Exists()}");
+				Messages.WriteDebug($"SourceImages: {Messages.SourceImageCount}");
+				Messages.WriteDebug($"SupportedExtensions: {ImageTypes.Default.String}");
+				Messages.WriteDebug($"PathConv: {pathConvention}");
+				Messages.WriteDebug($"NameConv: {namingConvention}");
+				Messages.WriteDebug($"CanRun: {canRun}");
+				Messages.WriteDebug($"RunBlocker: {runBlockerReason ?? "(none)"}");
 			}
 
-			Messages.WriteDebug($"SourceRoot: {Messages.SourceRoot?.FullPath}");
-			Messages.WriteDebug($"DestinationRoot: {destinationRoot?.FullPath}");
-			Messages.WriteDebug($"Subscriber: {Messages.Subscriber}");
-			Messages.WriteDebug($"Filter: {Messages.Filter}");
-			Messages.WriteDebug($"PathConvention: {pathConvention}");
-			Messages.WriteDebug($"NamingConvention: {namingConvention}");
+			if (showHelp)
+			{
+				Messages.WriteHelp();
+				return 0;
+			}
 
-			var count = ImageOrganizer.Organize(
+			if (!canRun)
+			{
+				Messages.WriteHelp();
+				Messages.WriteInfo($"No files copied: {runBlockerReason}");
+				return 1;
+			}
+
+			var report = ImageOrganizer.OrganizeWithReport(
 				Messages.SourceRoot!,
 				destinationRoot!,
 				Messages.Subscriber!,
-				Messages.Filter,
 				pathConvention,
-				namingConvention);
+				namingConvention,
+				debug: Messages.Debug);
 
-			Messages.WriteSuccess($"{count} files copied.");
+			Messages.WriteSuccess(CopySummary(report, Messages.SourceRoot!, destinationRoot!, Messages.Debug));
 			return 0;
 		}
 		catch (Exception ex)
@@ -232,11 +453,58 @@ internal static class Program
 		}
 	}
 
-	private static RaiPath? ResolveDestinationRoot(string? cloudProvider, string? rootParam, string? subscriber)
+	private static string? RunBlockerReason(
+		RaiPath? sourceRoot,
+		int? sourceImageCount,
+		RaiPath? destinationRoot,
+		string? subscriber,
+		bool debug)
 	{
+		if (sourceRoot == null)
+			return "no source image directory was given.";
+		if (!sourceRoot.Exists())
+			return debug
+				? $"source image directory does not exist: {sourceRoot.FullPath}"
+				: "source image directory does not exist.";
+		if (sourceImageCount.GetValueOrDefault() == 0)
+			return debug
+				? $"no supported image files were found in {sourceRoot.FullPath}; supported: {ImageTypes.Default.String}"
+				: "no supported image files were found.";
 		if (string.IsNullOrWhiteSpace(subscriber))
-			return null;
+			return "no subscriber was given.";
+		if (destinationRoot == null)
+			return debug
+				? "destination image root could not be resolved from --cloud/--root/subscriber."
+				: "destination image root could not be resolved.";
 
+		return null;
+	}
+
+	private static string CopySummary(ImageOrganizer.ImageOrganizeReport report, RaiPath sourceRoot, RaiPath destinationRoot, bool debug)
+	{
+		var summary = debug
+			? $"{report.CopiedCount}/{report.SourceImageCount} source images copied.\nSourceRoot: {sourceRoot.FullPath}\nImageRoot: {destinationRoot.FullPath}\nSupportedExtensions: {ImageTypes.Default.String}"
+			: $"{report.CopiedCount}/{report.SourceImageCount} source images copied from {sourceRoot.FullPath} to {destinationRoot.FullPath}";
+
+		if (report.FailedCount == 0)
+			return summary;
+
+		var failureSummary = string.Join(", ", report.Failed
+			.GroupBy(failure => debug ? $"{failure.ErrorType}: {failure.Problem}" : failure.ErrorType)
+			.Select(group => $"{group.Count()} not copied because {group.Key}"));
+
+		if (debug)
+		{
+			var failedFiles = string.Join("\n", report.Failed.Select(failure =>
+				$"NotCopied: {failure.SourceFullName}; {failure.ErrorType}: {failure.Problem}"));
+			return $"{summary}\n{failureSummary}\n{failedFiles}";
+		}
+
+		return $"{summary}. {failureSummary}";
+	}
+
+	private static RaiPath? ResolveImageRoot(string? cloudProvider, string? rootParam)
+	{
 		RaiPath? root = null;
 		if (!string.IsNullOrWhiteSpace(cloudProvider))
 		{
@@ -254,9 +522,16 @@ internal static class Program
 			root = new RaiPath(rootParam);
 		}
 
-		return root != null
-			? root / new RaiRelPath(subscriber)
-			: null;
+		return root;
+	}
+
+	private static RaiPath? ResolveDestinationRoot(RaiPath? imageRoot, string? subscriber)
+	{
+		if (imageRoot == null || string.IsNullOrWhiteSpace(subscriber))
+			return null;
+
+		var sPath = new RaiRelPath(subscriber);
+		return imageRoot / sPath;
 	}
 
 	private static bool TryParseEnum<TEnum>(string? value, out TEnum result)
@@ -287,7 +562,7 @@ internal static class Program
 	private static string? ParamValue(string[] args, params string[] names)
 	{
 		for (int i = 0; i < args.Length; i++)
-		{
+			{
 			if (!names.Contains(args[i], StringComparer.OrdinalIgnoreCase))
 				continue;
 
@@ -300,10 +575,10 @@ internal static class Program
 	{
 		var optionNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
 		{
-			"-h", "--help", "-v", "--version", "-n", "--nologo", "-b", "--debug",
+			"-h", "--help", "-v", "--version", "-l", "--nologo", "-d", "--debug",
 			"-c", "--cloudprovider", "--cloud", "-r", "--root", "--imageroot",
-			"-s", "--source", "-f", "--filter", "-p", "--pathconvention",
-			"--path-convention", "-m", "--namingconvention", "--naming-convention"
+			"-s", "--source", "-p", "--pathconv", "--path-conv",
+			"-n", "--nameconv", "--name-conv"
 		};
 
 		for (int i = 0; i < args.Length; i++)
@@ -324,14 +599,21 @@ internal static class Program
 
 	private static bool OptionTakesValue(string arg)
 	{
-		return !new[] { "-h", "--help", "-v", "--version", "-n", "--nologo", "-b", "--debug" }
+		return !new[] { "-h", "--help", "-v", "--version", "-l", "--nologo", "-d", "--debug" }
 			.Contains(arg, StringComparer.OrdinalIgnoreCase);
 	}
 
 	private static string GetVersion()
 	{
-		return typeof(Program).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
-			?? typeof(Program).Assembly.GetName().Version?.ToString()
+		var assembly = Assembly.GetEntryAssembly();
+		var name = assembly?.GetName().Name?.ToLowerInvariant() ?? "pits";
+		var version = assembly?
+			.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
+			.InformationalVersion
+			.Split('+')[0]
+			?? assembly?.GetName().Version?.ToString()
 			?? "unknown";
+		return $"{name} v{version}";
 	}
+
 }

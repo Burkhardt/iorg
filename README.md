@@ -77,6 +77,24 @@ With `-d`, each copied image is printed with full destination and source paths:
 
 The final summary reports how many detected source images were copied and groups any files that were not copied by failure reason.
 
+To inspect image deletion for an item without deleting files, use `-rm` with a `ShortName`:
+
+```bash
+iorg -rm NomsaConcert_11 -c OneDrive -r LiveAfricaStageImage nomsa
+```
+
+`ShortName` can be either `ItemId` or `ItemId_Nr`. `-rm` matches all images for that short name, while `-rm-cache` matches only cached/rendered variants such as files with a template/name extension:
+
+```bash
+iorg -rm-cache NomsaConcert_11 -c OneDrive -r LiveAfricaStageImage nomsa
+```
+
+Delete commands are dry-run by default and list what would be deleted. Add `--force` to actually delete the matched files:
+
+```bash
+iorg -rm-cache NomsaConcert_11 -c OneDrive -r LiveAfricaStageImage nomsa --force
+```
+
 Useful options:
 
 - `-h`, `--help`: print help
@@ -86,6 +104,9 @@ Useful options:
 - `-c`, `--cloud`: cloud provider name from `Os.Config.Cloud`
 - `-r`, `--root`: destination image root under the cloud root
 - `-s`, `--source`: source image directory
+- `-rm`: list all images that would be deleted for `ShortName`; add `--force` to delete
+- `-rm-cache`: list cached images that would be deleted for `ShortName`; add `--force` to delete
+- `--force`: perform delete actions for `-rm` or `-rm-cache`
 - `-p`, `--pathconv`: `CanonicalByName`, `ItemIdTree3x3`, or `ItemIdTree8x2`
 - `-n`, `--nameconv`: `Legacy`, `ItemTemplate`, or `Structured`
 

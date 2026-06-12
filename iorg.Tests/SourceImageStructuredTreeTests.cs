@@ -126,6 +126,103 @@ public class SourceImageStructuredTreeTests
 		}
 	}
 
+	[Fact]
+	public void DeleteByShortName_DryRunListsMatchesWithoutDeleting()
+	{
+		var testRoot = NewTestRoot();
+		try
+		{
+			var subscriberRoot = testRoot / "dest" / Subscriber;
+			var source = SeedImage(subscriberRoot, "AfricanPicnic", string.Empty, "png", imageNumber: 1);
+			var cache = SeedImage(subscriberRoot, "AfricanPicnic", "Small", "webp", imageNumber: 1);
+			using var output = new StringWriter();
+
+			var report = ImageOrganizer.DeleteByShortName(
+				subscriberRoot,
+				"AfricanPicnic_01",
+				cacheOnly: false,
+				force: false,
+				PathConventionType.ItemIdTree8x2,
+				ImageNamingConvention.Structured,
+				output);
+
+			Assert.Equal(2, report.MatchedCount);
+			Assert.Equal(2, report.DeletedCount);
+			Assert.True(source.Exists());
+			Assert.True(cache.Exists());
+			Assert.Contains($"would delete: {source.NameWithExtension}", output.ToString());
+			Assert.Contains($"would delete: {cache.NameWithExtension}", output.ToString());
+		}
+		finally
+		{
+			Cleanup(testRoot);
+		}
+	}
+
+	[Fact]
+	public void DeleteByShortName_ForceDeletesMatches()
+	{
+		var testRoot = NewTestRoot();
+		try
+		{
+			var subscriberRoot = testRoot / "dest" / Subscriber;
+			var source = SeedImage(subscriberRoot, "AfricanPicnic", string.Empty, "png", imageNumber: 1);
+			var other = SeedImage(subscriberRoot, "AfricanPicnic", string.Empty, "png", imageNumber: 2);
+			using var output = new StringWriter();
+
+			var report = ImageOrganizer.DeleteByShortName(
+				subscriberRoot,
+				"AfricanPicnic_01",
+				cacheOnly: false,
+				force: true,
+				PathConventionType.ItemIdTree8x2,
+				ImageNamingConvention.Structured,
+				output);
+
+			Assert.Equal(1, report.MatchedCount);
+			Assert.Equal(1, report.DeletedCount);
+			Assert.False(source.Exists());
+			Assert.True(other.Exists());
+			Assert.Contains($"deleted: {source.NameWithExtension}", output.ToString());
+		}
+		finally
+		{
+			Cleanup(testRoot);
+		}
+	}
+
+	[Fact]
+	public void DeleteByShortName_CacheOnlyKeepsSourceImages()
+	{
+		var testRoot = NewTestRoot();
+		try
+		{
+			var subscriberRoot = testRoot / "dest" / Subscriber;
+			var source = SeedImage(subscriberRoot, "GageElementary", string.Empty, "png");
+			var cache = SeedImage(subscriberRoot, "GageElementary", "Small", "webp");
+			using var output = new StringWriter();
+
+			var report = ImageOrganizer.DeleteByShortName(
+				subscriberRoot,
+				"GageElementary",
+				cacheOnly: true,
+				force: true,
+				PathConventionType.ItemIdTree8x2,
+				ImageNamingConvention.Structured,
+				output);
+
+			Assert.Equal(1, report.MatchedCount);
+			Assert.Equal(1, report.DeletedCount);
+			Assert.True(source.Exists());
+			Assert.False(cache.Exists());
+			Assert.Contains($"deleted cached: {cache.NameWithExtension}", output.ToString());
+		}
+		finally
+		{
+			Cleanup(testRoot);
+		}
+	}
+
 	private static RaiPath GoogleDriveSourceRoot()
 	{
 		var cloudDir = Os.Config?.Cloud?["GoogleDrive"];
@@ -143,6 +240,23 @@ public class SourceImageStructuredTreeTests
 		Cleanup(root);
 		root.mkdir();
 		return root;
+	}
+
+	private static ImageTreeFile SeedImage(RaiPath subscriberRoot, string itemId, string nameExt, string ext, int imageNumber = ImageFile.NoImageNumber)
+	{
+		var file = new ImageTreeFile(
+			subscriberRoot,
+			itemId,
+			nameExt,
+			ext,
+			PathConventionType.ItemIdTree8x2,
+			ImageNamingConvention.Structured)
+		{
+			ImageNumber = imageNumber
+		};
+		file.mkdir();
+		File.WriteAllText(file.FullName, file.NameWithExtension);
+		return file;
 	}
 
 	private static void Cleanup(RaiPath root)

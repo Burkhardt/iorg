@@ -51,6 +51,9 @@ public static class Messages
 				$"-d, --debug\t{DebugIcon()}\t{(Debug ? "TRUE" : "FALSE")}",
 				$"-c, --cloud\t{CloudIcon()}\t{CloudDescription()}",
 				$"-s, --source\t{Icons.Folder}\t{SourceDescription()}",
+				$"-rm, --rm\t{Icons.File}\tlist images that would be deleted for ShortName; add --force to delete",
+				$"-rm-cache, --rm-cache\t{Icons.File}\tlist cached images that would be deleted for ShortName; add --force to delete",
+				$"--force\t{Icons.Bug}\tdelete files for -rm or -rm-cache instead of dry-run",
 				$"-p, --pathconv\t{SelectedOptionIcon(PathConvention)}\t{NumberedOptions<PathConventionType>()}",
 				$"-n, --nameconv\t{SelectedOptionIcon(NamingConvention)}\t{NumberedOptions<ImageNamingConvention>()}",
 			};
@@ -229,6 +232,8 @@ public static class ImageOrganizer
 {
 	public sealed record ImageCopySuccess(string SourceName, string SourceFullName, string DestinationFullName);
 	public sealed record ImageCopyFailure(string SourceName, string SourceFullName, string Problem, string ErrorType);
+	public sealed record ImageDeleteSuccess(string Name, string FullName);
+	public sealed record ImageDeleteFailure(string Name, string FullName, string Problem, string ErrorType);
 
 	public sealed class ImageOrganizeReport
 	{
@@ -241,6 +246,26 @@ public static class ImageOrganizer
 		public List<ImageCopySuccess> Copied { get; } = [];
 		public List<ImageCopyFailure> Failed { get; } = [];
 		public int CopiedCount => Copied.Count;
+		public int FailedCount => Failed.Count;
+	}
+
+	public sealed class ImageDeleteReport
+	{
+		public ImageDeleteReport(string shortName, bool cacheOnly, bool force, int matchedCount)
+		{
+			ShortName = shortName;
+			CacheOnly = cacheOnly;
+			Force = force;
+			MatchedCount = matchedCount;
+		}
+
+		public string ShortName { get; }
+		public bool CacheOnly { get; }
+		public bool Force { get; }
+		public int MatchedCount { get; }
+		public List<ImageDeleteSuccess> Deleted { get; } = [];
+		public List<ImageDeleteFailure> Failed { get; } = [];
+		public int DeletedCount => Deleted.Count;
 		public int FailedCount => Failed.Count;
 	}
 
@@ -327,6 +352,49 @@ public static class ImageOrganizer
 		return EnumerateImageFiles(sourceRoot).Count();
 	}
 
+	public static ImageDeleteReport DeleteByShortName(
+		RaiPath subscriberRoot,
+		string shortName,
+		bool cacheOnly,
+		bool force,
+		PathConventionType pathConvention = PathConventionType.ItemIdTree8x2,
+		ImageNamingConvention namingConvention = ImageNamingConvention.Structured,
+		TextWriter? output = null,
+		bool debug = false)
+	{
+		if (subscriberRoot == null)
+			throw new ArgumentNullException(nameof(subscriberRoot));
+		if (string.IsNullOrWhiteSpace(shortName))
+			throw new ArgumentException("ShortName is required.", nameof(shortName));
+
+		var probe = ParseShortName(shortName);
+		var bucket = new ImageTreeFile(subscriberRoot, probe.ItemId, string.Empty, string.Empty, pathConvention, namingConvention).SubdirRoot;
+		var candidates = EnumerateDeleteCandidates(bucket, probe, cacheOnly, pathConvention, namingConvention).ToList();
+		var report = new ImageDeleteReport(shortName, cacheOnly, force, candidates.Count);
+		output ??= Console.Out;
+
+		foreach (var candidate in candidates)
+		{
+			try
+			{
+				if (force)
+					candidate.rm();
+
+				report.Deleted.Add(new ImageDeleteSuccess(candidate.NameWithExtension, candidate.FullName));
+				output.WriteLine(DeleteLine(candidate, cacheOnly, force, debug));
+			}
+			catch (Exception ex) when (IsPerFileFailure(ex))
+			{
+				report.Failed.Add(new ImageDeleteFailure(candidate.NameWithExtension, candidate.FullName, ProblemDescription(ex), ex.GetType().Name));
+				output.WriteLine(debug
+					? $"not deleted: {candidate.FullName}; {ex.GetType().Name}: {ex.Message}"
+					: $"not deleted: {candidate.NameWithExtension}");
+			}
+		}
+
+		return report;
+	}
+
 	private static IEnumerable<RaiFile> EnumerateImageFiles(RaiPath sourceRoot)
 	{
 		var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -339,6 +407,73 @@ public static class ImageOrganizer
 			foreach (var source in sourceRoot.EnumerateFiles($"*.{ext}"))
 				yield return source;
 		}
+	}
+
+	private static ImageFile ParseShortName(string shortName)
+	{
+		if (shortName.Contains('/') || shortName.Contains('\\'))
+			throw new ArgumentException("ShortName must be ItemId or ItemId_Nr, not a path.", nameof(shortName));
+
+		var stem = System.IO.Path.GetFileNameWithoutExtension(shortName.Trim());
+		if (string.IsNullOrWhiteSpace(stem))
+			throw new ArgumentException("ShortName is required.", nameof(shortName));
+
+		return new ImageFile(stem, ImageNamingConvention.Structured);
+	}
+
+	private static IEnumerable<ImageTreeFile> EnumerateDeleteCandidates(
+		RaiPath bucket,
+		ImageFile probe,
+		bool cacheOnly,
+		PathConventionType pathConvention,
+		ImageNamingConvention namingConvention)
+	{
+		if (!bucket.Exists())
+			yield break;
+
+		var extensions = DeleteExtensions();
+		foreach (var file in bucket.EnumerateFiles("*"))
+		{
+			if (!extensions.Contains(file.Ext.TrimStart('.')))
+				continue;
+
+			var image = new ImageTreeFile(file.FullName, pathConvention, namingConvention);
+			if (!string.Equals(image.ItemId, probe.ItemId, StringComparison.OrdinalIgnoreCase))
+				continue;
+			if (probe.ImageNumber != ImageFile.NoImageNumber && image.ImageNumber != probe.ImageNumber)
+				continue;
+			if (cacheOnly && !IsCacheImage(image))
+				continue;
+
+			yield return image;
+		}
+	}
+
+	private static HashSet<string> DeleteExtensions()
+	{
+		var extensions = ImageTreeFile.DefaultSourceExtensions
+			.Split([',', ';', ' ', '\t'], StringSplitOptions.RemoveEmptyEntries)
+			.Concat(ImageTypes.Default.Array)
+			.Select(ext => ext.Trim().TrimStart('.').ToLowerInvariant());
+
+		return new HashSet<string>(extensions, StringComparer.OrdinalIgnoreCase);
+	}
+
+	private static bool IsCacheImage(ImageFile image)
+	{
+		return !string.IsNullOrWhiteSpace(image.NameExt)
+			|| !string.IsNullOrWhiteSpace(image.TemplateName)
+			|| !string.IsNullOrWhiteSpace(image.TileTemplate)
+			|| !string.IsNullOrWhiteSpace(image.TileNumber);
+	}
+
+	private static string DeleteLine(ImageTreeFile candidate, bool cacheOnly, bool force, bool debug)
+	{
+		var action = force ? "deleted" : "would delete";
+		var kind = cacheOnly ? " cached" : string.Empty;
+		return debug
+			? $"{action}{kind}: {candidate.FullName}"
+			: $"{action}{kind}: {candidate.NameWithExtension}";
 	}
 
 	private static bool IsPerFileFailure(Exception ex)
@@ -373,6 +508,9 @@ internal static class Program
 			Messages.CloudProvider = ParamValue(args, "-c", "--cloudprovider", "--cloud");
 			var rootParam = ParamValue(args, "-r", "--root", "--imageroot");
 			var sourceParam = ParamValue(args, "-s", "--source");
+			var deleteShortName = ParamValue(args, "-rm", "--rm");
+			var deleteCacheShortName = ParamValue(args, "-rm-cache", "--rm-cache");
+			var force = HasOption(args, "--force");
 			Messages.RootParam = rootParam;
 			Messages.Subscriber = PositionalArg(args);
 
@@ -391,8 +529,14 @@ internal static class Program
 			Messages.ImageRoot = imageRoot;
 			var destinationRoot = ResolveDestinationRoot(imageRoot, Messages.Subscriber);
 			Messages.DestinationRoot = destinationRoot;
+			var deleteModeCount = (deleteShortName != null ? 1 : 0) + (deleteCacheShortName != null ? 1 : 0);
+			var deleteMode = deleteModeCount > 0;
+			var deleteCacheOnly = deleteCacheShortName != null;
+			var deleteTarget = deleteCacheShortName ?? deleteShortName;
 
-			var runBlockerReason = RunBlockerReason(
+			var runBlockerReason = deleteMode
+				? DeleteBlockerReason(deleteModeCount, deleteTarget, destinationRoot, Messages.Subscriber, Messages.Debug)
+				: RunBlockerReason(
 				Messages.SourceRoot,
 				Messages.SourceImageCount,
 				destinationRoot,
@@ -416,6 +560,10 @@ internal static class Program
 				Messages.WriteDebug($"SupportedExtensions: {ImageTypes.Default.String}");
 				Messages.WriteDebug($"PathConv: {pathConvention}");
 				Messages.WriteDebug($"NameConv: {namingConvention}");
+				Messages.WriteDebug($"DeleteMode: {deleteMode}");
+				Messages.WriteDebug($"DeleteCacheOnly: {deleteCacheOnly}");
+				Messages.WriteDebug($"DeleteTarget: {deleteTarget}");
+				Messages.WriteDebug($"Force: {force}");
 				Messages.WriteDebug($"CanRun: {canRun}");
 				Messages.WriteDebug($"RunBlocker: {runBlockerReason ?? "(none)"}");
 			}
@@ -429,8 +577,25 @@ internal static class Program
 			if (!canRun)
 			{
 				Messages.WriteHelp();
-				Messages.WriteInfo($"No files copied: {runBlockerReason}");
+				Messages.WriteInfo(deleteMode
+					? $"No files deleted: {runBlockerReason}"
+					: $"No files copied: {runBlockerReason}");
 				return 1;
+			}
+
+			if (deleteMode)
+			{
+				var deleteReport = ImageOrganizer.DeleteByShortName(
+					destinationRoot!,
+					deleteTarget!,
+					deleteCacheOnly,
+					force,
+					pathConvention,
+					namingConvention,
+					debug: Messages.Debug);
+
+				Messages.WriteSuccess(DeleteSummary(deleteReport, destinationRoot!, Messages.Debug));
+				return deleteReport.FailedCount == 0 ? 0 : 1;
 			}
 
 			var report = ImageOrganizer.OrganizeWithReport(
@@ -480,6 +645,31 @@ internal static class Program
 		return null;
 	}
 
+	private static string? DeleteBlockerReason(
+		int deleteModeCount,
+		string? shortName,
+		RaiPath? destinationRoot,
+		string? subscriber,
+		bool debug)
+	{
+		if (deleteModeCount > 1)
+			return "use only one of -rm or -rm-cache.";
+		if (string.IsNullOrWhiteSpace(shortName))
+			return "no ShortName was given for delete mode.";
+		if (shortName.Contains('/') || shortName.Contains('\\'))
+			return debug
+				? $"ShortName must be ItemId or ItemId_Nr, not a path: {shortName}"
+				: "ShortName must be ItemId or ItemId_Nr, not a path.";
+		if (string.IsNullOrWhiteSpace(subscriber))
+			return "no subscriber was given.";
+		if (destinationRoot == null)
+			return debug
+				? "destination image root could not be resolved from --cloud/--root/subscriber."
+				: "destination image root could not be resolved.";
+
+		return null;
+	}
+
 	private static string CopySummary(ImageOrganizer.ImageOrganizeReport report, RaiPath sourceRoot, RaiPath destinationRoot, bool debug)
 	{
 		var summary = debug
@@ -501,6 +691,34 @@ internal static class Program
 		}
 
 		return $"{summary}. {failureSummary}";
+	}
+
+	private static string DeleteSummary(ImageOrganizer.ImageDeleteReport report, RaiPath destinationRoot, bool debug)
+	{
+		var mode = report.CacheOnly ? "cached images" : "images";
+		var action = report.Force ? "deleted" : "would be deleted";
+		var summary = debug
+			? $"{report.DeletedCount}/{report.MatchedCount} {mode} {action} for {report.ShortName}.\nImageRoot: {destinationRoot.FullPath}\nForce: {report.Force}"
+			: $"{report.DeletedCount}/{report.MatchedCount} {mode} {action} for {report.ShortName}";
+
+		if (!report.Force && report.MatchedCount > 0)
+			summary += debug
+				? "\nDryRun: add --force to delete these files."
+				: " (dry-run; add --force to delete)";
+
+		if (report.FailedCount == 0)
+			return summary;
+
+		var failureSummary = string.Join(", ", report.Failed
+			.GroupBy(failure => debug ? $"{failure.ErrorType}: {failure.Problem}" : failure.ErrorType)
+			.Select(group => $"{group.Count()} not deleted because {group.Key}"));
+
+		if (!debug)
+			return $"{summary}. {failureSummary}";
+
+		var failedFiles = string.Join("\n", report.Failed.Select(failure =>
+			$"NotDeleted: {failure.FullName}; {failure.ErrorType}: {failure.Problem}"));
+		return $"{summary}\n{failureSummary}\n{failedFiles}";
 	}
 
 	private static RaiPath? ResolveImageRoot(string? cloudProvider, string? rootParam)
@@ -578,7 +796,8 @@ internal static class Program
 			"-h", "--help", "-v", "--version", "-l", "--nologo", "-d", "--debug",
 			"-c", "--cloudprovider", "--cloud", "-r", "--root", "--imageroot",
 			"-s", "--source", "-p", "--pathconv", "--path-conv",
-			"-n", "--nameconv", "--name-conv"
+			"-n", "--nameconv", "--name-conv", "-rm", "--rm", "-rm-cache", "--rm-cache",
+			"--force"
 		};
 
 		for (int i = 0; i < args.Length; i++)
@@ -599,7 +818,7 @@ internal static class Program
 
 	private static bool OptionTakesValue(string arg)
 	{
-		return !new[] { "-h", "--help", "-v", "--version", "-l", "--nologo", "-d", "--debug" }
+		return !new[] { "-h", "--help", "-v", "--version", "-l", "--nologo", "-d", "--debug", "--force" }
 			.Contains(arg, StringComparer.OrdinalIgnoreCase);
 	}
 

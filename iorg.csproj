@@ -3,10 +3,10 @@
   <PropertyGroup>
     <Title>ImgSeeder</Title>
     <Description>RAIkeep image organizer CLI for reorganizing flat image directories into RaiImage tree layouts.</Description>
-    <Version>3.9.2</Version>
-    <AssemblyVersion>3.9.2</AssemblyVersion>
-    <FileVersion>3.9.2</FileVersion>
-    <InformationalVersion>3.9.2</InformationalVersion>
+    <Version>3.10.0</Version>
+    <AssemblyVersion>3.10.0</AssemblyVersion>
+    <FileVersion>3.10.0</FileVersion>
+    <InformationalVersion>3.10.0</InformationalVersion>
     <PackageId>ImgSeeder</PackageId>
     <Authors>Rainer Burkhardt</Authors>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
@@ -15,7 +15,7 @@
     <RepositoryUrl>https://github.com/Burkhardt/iorg.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
-    <PackageReleaseNotes>3.9.2: aligns ImgSeeder with the coordinated minor line, keeps fallback package versions current, preserves the iorg CLI behavior from 3.9.1, and remains sequenced immediately before PitSeeder.</PackageReleaseNotes>
+    <PackageReleaseNotes>3.10.0: aligns ImgSeeder with the coordinated minor line, keeps fallback package versions current, preserves the iorg CLI behavior from 3.9.1, and remains sequenced immediately before PitSeeder.</PackageReleaseNotes>
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>

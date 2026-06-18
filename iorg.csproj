@@ -3,7 +3,7 @@
   <PropertyGroup>
     <Title>ImgSeeder</Title>
     <Description>RAIkeep image organizer CLI for reorganizing flat image directories into RaiImage tree layouts.</Description>
-    <Version>3.10.1</Version>
+    <Version>3.10.2</Version>
     <AssemblyVersion>3.10.1</AssemblyVersion>
     <FileVersion>3.10.1</FileVersion>
     <InformationalVersion>3.10.1</InformationalVersion>

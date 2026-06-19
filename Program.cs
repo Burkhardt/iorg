@@ -19,6 +19,7 @@ public static class Icons
 	public const char Banner = '\ueb1e';
 	public const char NoBanner = '\ueb24';
 	public const char Bug = '\uf188';
+	public const char Force = '\uf0e7';
 	public const char Runner = '\uf04b';
 	public const char ArrowLeft = '\uf060';
 	public static readonly string[] NumberCircles = ["①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧", "⑨"];
@@ -45,17 +46,17 @@ public static class Messages
 		{
 			var lines = new List<string>
 			{
-				$"-h, --help\t{Icons.Help}\tprint out all options",
-				$"-v, --version\t{Icons.Info}\tprint version info",
-				$"-l, --nologo\t{BannerIcon()}\tdo not display the banner",
-				$"-d, --debug\t{DebugIcon()}\t{(Debug ? "TRUE" : "FALSE")}",
-				$"-c, --cloud\t{CloudIcon()}\t{CloudDescription()}",
-				$"-s, --source\t{Icons.Folder}\t{SourceDescription()}",
-				$"-rm, --rm\t{Icons.File}\tlist images that would be deleted for ShortName; add --force to delete",
-				$"-rm-cache, --rm-cache\t{Icons.File}\tlist cached images that would be deleted for ShortName; add --force to delete",
-				$"--force\t{Icons.Bug}\tdelete files for -rm or -rm-cache instead of dry-run",
-				$"-p, --pathconv\t{SelectedOptionIcon(PathConvention)}\t{NumberedOptions<PathConventionType>()}",
-				$"-n, --nameconv\t{SelectedOptionIcon(NamingConvention)}\t{NumberedOptions<ImageNamingConvention>()}",
+				HelpLine("-h, --help", Icons.Help, "print out all options"),
+				HelpLine("-v, --version", Icons.Info, "print version info"),
+				HelpLine("-l, --nologo", BannerIcon(), "do not display the banner"),
+				HelpLine("-d, --debug", DebugIcon(), Debug ? "TRUE" : "FALSE"),
+				HelpLine("-c, --cloud", CloudIcon(), CloudDescription()),
+				HelpLine("-s, --source", Icons.Folder, SourceDescription()),
+				HelpLine("-rm, --rm", Icons.File, "list images that would be deleted for ShortName"),
+				HelpLine("-rmc, --rm-cache", Icons.File, "list cached images that would be deleted for ShortName"),
+				HelpLine("--force", Icons.Force, "force delete for -rm or -rmc/--rm-cache"),
+				HelpLine("-p, --pathconv", SelectedOptionIcon(PathConvention), NumberedOptions<PathConventionType>()),
+				HelpLine("-n, --nameconv", SelectedOptionIcon(NamingConvention), NumberedOptions<ImageNamingConvention>()),
 			};
 
 			if (SourceRoot != null)
@@ -64,7 +65,7 @@ public static class Messages
 			if (!string.IsNullOrWhiteSpace(Subscriber))
 				lines.Add($"{Icons.Info} Subscriber\t{Icons.Folder}\t{Subscriber}");
 
-			lines.Add($"-r, --root\t{Icons.Folder}\t{RootDescription()}");
+			lines.Add(HelpLine("-r, --root", Icons.Folder, RootDescription()));
 			lines.Add($"ImageRoot: {ImageRootDescription()}");
 			return lines.ToArray();
 		}
@@ -76,6 +77,11 @@ public static class Messages
 		return options.Length > 0
 			? NumberedOptions(options)
 			: "cloud provider name; []";
+	}
+
+	private static string HelpLine(string option, object icon, string description)
+	{
+		return $"{option.PadRight(24)}\t{icon}\t{description}";
 	}
 
 	private static char BannerIcon() => Banner ? Icons.Banner : Icons.NoBanner;
@@ -509,7 +515,7 @@ internal static class Program
 			var rootParam = ParamValue(args, "-r", "--root", "--imageroot");
 			var sourceParam = ParamValue(args, "-s", "--source");
 			var deleteShortName = ParamValue(args, "-rm", "--rm");
-			var deleteCacheShortName = ParamValue(args, "-rm-cache", "--rm-cache");
+			var deleteCacheShortName = ParamValue(args, "-rmc", "--rm-cache", "-rm-cache");
 			var force = HasOption(args, "--force");
 			Messages.RootParam = rootParam;
 			Messages.Subscriber = PositionalArg(args);
@@ -653,7 +659,7 @@ internal static class Program
 		bool debug)
 	{
 		if (deleteModeCount > 1)
-			return "use only one of -rm or -rm-cache.";
+			return "use only one of -rm or -rmc/--rm-cache.";
 		if (string.IsNullOrWhiteSpace(shortName))
 			return "no ShortName was given for delete mode.";
 		if (shortName.Contains('/') || shortName.Contains('\\'))
@@ -796,7 +802,7 @@ internal static class Program
 			"-h", "--help", "-v", "--version", "-l", "--nologo", "-d", "--debug",
 			"-c", "--cloudprovider", "--cloud", "-r", "--root", "--imageroot",
 			"-s", "--source", "-p", "--pathconv", "--path-conv",
-			"-n", "--nameconv", "--name-conv", "-rm", "--rm", "-rm-cache", "--rm-cache",
+			"-n", "--nameconv", "--name-conv", "-rm", "--rm", "-rmc", "--rm-cache", "-rm-cache",
 			"--force"
 		};
 

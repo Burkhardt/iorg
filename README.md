@@ -2,11 +2,11 @@
 
 `ImgSeeder` is the RAIkeep image organizer package. It installs the `iorg` CLI, which copies source images, normalizes filenames with RaiImage naming rules, and places the final files into an `ImageTreeFile` directory layout such as `ItemIdTree8x2`.
 
-## 3.10.3
+## 3.10.4
 
-- Metadata patch release: aligns runtime assembly/file/informational metadata with the package version so `iorg -v` reports `3.10.3`.
-- Keeps fallback package references on `JsonPit`, `OsLibCore`, `RaiUtils`, and `RaiImage` `3.10.2`.
-- Current release notes: [RELEASE_NOTES_3.10.3.md](RELEASE_NOTES_3.10.3.md)
+- UX patch release: adds `-rmc` as the short alias for cache deletion while keeping `--rm-cache`.
+- Help output now uses fixed option-column formatting so glyph icons align consistently.
+- Current release notes: [RELEASE_NOTES_3.10.4.md](RELEASE_NOTES_3.10.4.md)
 
 This tool is part of the RAIkeep package family:
 
@@ -82,16 +82,16 @@ To inspect image deletion for an item without deleting files, use `-rm` with a `
 iorg -rm NomsaConcert_11 -c OneDrive -r LiveAfricaStageImage nomsa
 ```
 
-`ShortName` can be either `ItemId` or `ItemId_Nr`. `-rm` matches all images for that short name, while `-rm-cache` matches only cached/rendered variants such as files with a template/name extension:
+`ShortName` can be either `ItemId` or `ItemId_Nr`. `-rm` matches all images for that short name, while `-rmc` (or `--rm-cache`) matches only cached/rendered variants such as files with a template/name extension:
 
 ```bash
-iorg -rm-cache NomsaConcert_11 -c OneDrive -r LiveAfricaStageImage nomsa
+iorg -rmc NomsaConcert_11 -c OneDrive -r LiveAfricaStageImage nomsa
 ```
 
 Delete commands are dry-run by default and list what would be deleted. Add `--force` to actually delete the matched files:
 
 ```bash
-iorg -rm-cache NomsaConcert_11 -c OneDrive -r LiveAfricaStageImage nomsa --force
+iorg -rmc NomsaConcert_11 -c OneDrive -r LiveAfricaStageImage nomsa --force
 ```
 
 Useful options:
@@ -104,8 +104,8 @@ Useful options:
 - `-r`, `--root`: destination image root under the cloud root
 - `-s`, `--source`: source image directory
 - `-rm`: list all images that would be deleted for `ShortName`; add `--force` to delete
-- `-rm-cache`: list cached images that would be deleted for `ShortName`; add `--force` to delete
-- `--force`: perform delete actions for `-rm` or `-rm-cache`
+- `-rmc`, `--rm-cache`: list cached images that would be deleted for `ShortName`; add `--force` to delete
+- `--force`: perform delete actions for `-rm` or `-rmc/--rm-cache`
 - `-p`, `--pathconv`: `CanonicalByName`, `ItemIdTree3x3`, or `ItemIdTree8x2`
 - `-n`, `--nameconv`: `Legacy`, `ItemTemplate`, or `Structured`
 

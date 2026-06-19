@@ -26,7 +26,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="../iorg.csproj" />
+		<ProjectReference Include="../ImgSeeder.csproj" />
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(UseLocalRAIkeepSources)' == 'true'">

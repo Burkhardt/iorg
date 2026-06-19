@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="ImgSeeder.csproj" />
+  <Project Path="ImgSeeder.Tests/ImgSeeder.Tests.csproj" />
+</Solution>

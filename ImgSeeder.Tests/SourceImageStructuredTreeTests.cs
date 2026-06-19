@@ -1,4 +1,4 @@
-using iorg;
+using ImgSeeder;
 using OsLib;
 using RaiImage;
 using Xunit;

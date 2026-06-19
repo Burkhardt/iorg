@@ -9,5 +9,5 @@
 
 ## Validation
 
-- `dotnet test iorg.slnx --nologo -v minimal`
+- `dotnet test ImgSeeder.slnx --nologo -v minimal`
 - Publication remains wired through the tag-triggered `publish-nuget.yml` workflow and the parent sequential release chain.

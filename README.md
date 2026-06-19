@@ -123,4 +123,4 @@ These binaries can be deployed without a separate .NET runtime installation.
 
 ## Validation
 
-- `dotnet test iorg.slnx --nologo -v minimal`
+- `dotnet test ImgSeeder.slnx --nologo -v minimal`

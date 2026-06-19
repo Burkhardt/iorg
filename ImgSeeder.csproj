@@ -11,8 +11,8 @@
     <Authors>Rainer Burkhardt</Authors>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageProjectUrl>https://github.com/Burkhardt/iorg</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/Burkhardt/iorg.git</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/Burkhardt/ImgSeeder</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Burkhardt/ImgSeeder.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <PackageReleaseNotes>3.10.1: carries forward the coordinated package line, keeps ImgSeeder fallback package versions current, preserves the iorg CLI behavior from 3.10.0, and remains sequenced immediately before PitSeeder.</PackageReleaseNotes>
@@ -41,9 +41,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="iorg.Tests/**/*.cs" />
-    <EmbeddedResource Remove="iorg.Tests/**" />
-    <None Remove="iorg.Tests/**" />
+    <Compile Remove="ImgSeeder.Tests/**/*.cs" />
+    <EmbeddedResource Remove="ImgSeeder.Tests/**" />
+    <None Remove="ImgSeeder.Tests/**" />
     <None Include="README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 

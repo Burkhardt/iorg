@@ -27,22 +27,22 @@ jobs:
         shell: bash
         run: |
           TAG_VERSION="${GITHUB_REF_NAME#v}"
-          CSPROJ_VERSION=$(grep -oPm1 "(?<=<Version>)[^<]+" iorg.csproj)
+          CSPROJ_VERSION=$(grep -oPm1 "(?<=<Version>)[^<]+" ImgSeeder.csproj)
           echo "Tag version: ${TAG_VERSION}"
           echo "Project version: ${CSPROJ_VERSION}"
           if [[ "${TAG_VERSION}" != "${CSPROJ_VERSION}" ]]; then
-            echo "Tag version does not match iorg.csproj <Version>."
+            echo "Tag version does not match ImgSeeder.csproj <Version>."
             exit 1
           fi
 
       - name: Restore
-        run: dotnet restore iorg.slnx /p:UseLocalRAIkeepSources=false
+        run: dotnet restore ImgSeeder.slnx /p:UseLocalRAIkeepSources=false
 
       - name: Build
-        run: dotnet build iorg.slnx --configuration Release --no-restore /p:UseLocalRAIkeepSources=false
+        run: dotnet build ImgSeeder.slnx --configuration Release --no-restore /p:UseLocalRAIkeepSources=false
 
       - name: Pack
-        run: dotnet pack iorg.csproj --configuration Release --no-build /p:UseLocalRAIkeepSources=false
+        run: dotnet pack ImgSeeder.csproj --configuration Release --no-build /p:UseLocalRAIkeepSources=false
 
       - name: NuGet login (Trusted Publishing)
         uses: NuGet/login@v1
@@ -84,18 +84,18 @@ jobs:
         shell: bash
         run: |
           TAG_VERSION="${GITHUB_REF_NAME#v}"
-          CSPROJ_VERSION=$(grep -oPm1 "(?<=<Version>)[^<]+" iorg.csproj)
+          CSPROJ_VERSION=$(grep -oPm1 "(?<=<Version>)[^<]+" ImgSeeder.csproj)
           echo "Tag version: ${TAG_VERSION}"
           echo "Project version: ${CSPROJ_VERSION}"
           if [[ "${TAG_VERSION}" != "${CSPROJ_VERSION}" ]]; then
-            echo "Tag version does not match iorg.csproj <Version>."
+            echo "Tag version does not match ImgSeeder.csproj <Version>."
             exit 1
           fi
 
       - name: Publish self-contained binary
         shell: bash
         run: |
-          dotnet publish iorg.csproj \
+          dotnet publish ImgSeeder.csproj \
             --configuration Release \
             --runtime "${{ matrix.rid }}" \
             --self-contained true \
@@ -109,13 +109,13 @@ jobs:
           mkdir -p artifacts/release
           VERSION="${GITHUB_REF_NAME:-manual}-${{ matrix.rid }}"
           cd artifacts/publish
-          zip -r "../release/iorg-${VERSION}.zip" "${{ matrix.rid }}"
+          zip -r "../release/ImgSeeder-${VERSION}.zip" "${{ matrix.rid }}"
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
         with:
-          name: iorg-${{ matrix.rid }}
-          path: artifacts/release/iorg-*.zip
+          name: ImgSeeder-${{ matrix.rid }}
+          path: artifacts/release/ImgSeeder-*.zip
 
   publish-self-contained-release:
     if: startsWith(github.ref, 'refs/tags/v')
@@ -146,7 +146,7 @@ jobs:
           elif [[ -f "${NOTES_FILE}" ]]; then
             gh release create "${TAG}" --title "ImgSeeder ${VERSION}" --notes-file "${NOTES_FILE}"
           else
-            gh release create "${TAG}" --title "ImgSeeder ${VERSION}" --notes "ImgSeeder ${VERSION} self-contained iorg binaries."
+            gh release create "${TAG}" --title "ImgSeeder ${VERSION}" --notes "ImgSeeder ${VERSION} self-contained binaries."
           fi
 
       - name: Upload release assets

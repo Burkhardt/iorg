@@ -6,7 +6,7 @@ using System.Reflection;
 using OsLib;
 using RaiImage;
 
-namespace iorg;
+namespace ImgSeeder;
 
 public static class Icons
 {

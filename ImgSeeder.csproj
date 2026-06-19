@@ -4,9 +4,9 @@
     <Title>ImgSeeder</Title>
     <Description>RAIkeep image organizer CLI for reorganizing flat image directories into RaiImage tree layouts.</Description>
     <Version>3.10.2</Version>
-    <AssemblyVersion>3.10.1</AssemblyVersion>
-    <FileVersion>3.10.1</FileVersion>
-    <InformationalVersion>3.10.1</InformationalVersion>
+    <AssemblyVersion>3.10.2</AssemblyVersion>
+    <FileVersion>3.10.2</FileVersion>
+    <InformationalVersion>3.10.2</InformationalVersion>
     <PackageId>ImgSeeder</PackageId>
     <Authors>Rainer Burkhardt</Authors>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
@@ -15,7 +15,7 @@
     <RepositoryUrl>https://github.com/Burkhardt/ImgSeeder.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
-    <PackageReleaseNotes>3.10.1: carries forward the coordinated package line, keeps ImgSeeder fallback package versions current, preserves the iorg CLI behavior from 3.10.0, and remains sequenced immediately before PitSeeder.</PackageReleaseNotes>
+    <PackageReleaseNotes>3.10.2: carries forward the coordinated package line, keeps ImgSeeder fallback package versions current, preserves the iorg CLI behavior from 3.10.0, and remains sequenced immediately before PitSeeder.</PackageReleaseNotes>
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -34,10 +34,10 @@
     <UseLocalRAIkeepSources Condition="'$(UseLocalRAIkeepSources)' == '' and '$(ContinuousIntegrationBuild)' == 'true'">false</UseLocalRAIkeepSources>
     <UseLocalRAIkeepSources Condition="'$(UseLocalRAIkeepSources)' == '' and '$(JsonPitProjectPath)' != '' and '$(OsLibProjectPath)' != '' and '$(RaiUtilsProjectPath)' != '' and '$(RaiImageProjectPath)' != ''">true</UseLocalRAIkeepSources>
     <UseLocalRAIkeepSources Condition="'$(UseLocalRAIkeepSources)' == ''">false</UseLocalRAIkeepSources>
-    <JsonPitPackageVersion Condition="'$(JsonPitPackageVersion)' == ''">3.10.1</JsonPitPackageVersion>
-    <OsLibPackageVersion Condition="'$(OsLibPackageVersion)' == ''">3.10.1</OsLibPackageVersion>
-    <RaiUtilsPackageVersion Condition="'$(RaiUtilsPackageVersion)' == ''">3.10.1</RaiUtilsPackageVersion>
-    <RaiImagePackageVersion Condition="'$(RaiImagePackageVersion)' == ''">3.10.1</RaiImagePackageVersion>
+    <JsonPitPackageVersion Condition="'$(JsonPitPackageVersion)' == ''">3.10.2</JsonPitPackageVersion>
+    <OsLibPackageVersion Condition="'$(OsLibPackageVersion)' == ''">3.10.2</OsLibPackageVersion>
+    <RaiUtilsPackageVersion Condition="'$(RaiUtilsPackageVersion)' == ''">3.10.2</RaiUtilsPackageVersion>
+    <RaiImagePackageVersion Condition="'$(RaiImagePackageVersion)' == ''">3.10.2</RaiImagePackageVersion>
   </PropertyGroup>
 
   <ItemGroup>
